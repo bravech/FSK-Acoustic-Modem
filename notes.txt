@@ -1,0 +1,22 @@
+0 freq = 30 khz
+1 freq = 36 khz
+
+bandwidth = 2khz, so separation between keys is at least double that
+
+to avoid reflections, have a period of 45ms between pulses
+^^ can possibly refine/lower this if needed
+
+pulse length of 5ms
+
+2kHz tone detector bandwidth is wide enough to mitigate Doppler shifts
+
+words are separated by an even longer guard period (current implementation uses at least twice t_guard)
+
+four parameters per packet:
+-thrust: 4 states
+-frequency: 4 states
+-pitch: 7 states
+-yaw: 7 states
+-video recording: 2 states
+4 * 4 * 7 * 7 * 2 = 1568 => 11 bits
+10 bits expanded to 16 using (15, 11) hamming encoding with additional parity bit
