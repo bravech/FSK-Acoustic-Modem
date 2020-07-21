@@ -16,13 +16,16 @@ def gen_sin(freq, sample_rate, length):
 
 if __name__ == "__main__":
 
-    fs = 44100
+    fs = 96000
     test = np.concatenate((gen_sin(300, fs, 0.05), gen_sin(100, fs, 0.05)))
 
     data = "01001100"
+    data_diff = "0"
+    for x in data:
+        data_diff += bin(int(data_diff[-1]) ^ int(x))[-1]
     signal = np.array([])
 
-    for bit in data:
+    for bit in data_diff:
         if bit == '0':
             signal = np.concatenate((signal, gen_sin(F_0, fs, DUR_SHORT)))
         if bit == '1':
