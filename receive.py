@@ -122,16 +122,17 @@ if __name__ == "__main__":
     NONE_CUTOFF = 0.1
 
     data_diff = []
+    print(data_diff)
     is_symbol = False
-    for i in range(len(high_or_low)):
-        if high_or_low[i] > NONE_CUTOFF:
-            if not is_symbol:
+    for i in range(5, len(high_or_low)):
+        if high_or_low[i] > NONE_CUTOFF and not is_symbol:
+            if high_or_low[i] > HIGH_CUTOFF and np.std(high_or_low[i-5:i]) < 0.01:
                 is_symbol = True
-                if high_or_low[i] > HIGH_CUTOFF:
-                    data_diff.append(1)
-                if high_or_low[i] > LOW_CUTOFF:
-                    data_diff.append(0)
-        else:
+                data_diff.append(1)
+            if high_or_low[i] > LOW_CUTOFF and high_or_low[i] < HIGH_CUTOFF and np.std(high_or_low[i-5:i]) < 0.01:
+                is_symbol = True
+                data_diff.append(0)
+        elif high_or_low[i] <= NONE_CUTOFF:
             is_symbol = False
     
 
