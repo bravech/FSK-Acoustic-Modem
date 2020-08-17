@@ -5,6 +5,9 @@ from scipy.signal import iirfilter
 from scipy.signal import butter, lfilter, freqz
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import uniform_filter1d
+from pyaudio import PyAudio, paFloat32, paContinue
+from multiprocessing import Queue
+import argparse
 
 F_0_RAD = (2 * np.pi) /  F_0 
 F_1_RAD = (2 * np.pi) /  F_1 
@@ -92,15 +95,10 @@ def smooth(x,window_len=11,window='hanning'):
     return y
 
     
-
-if __name__ == "__main__":
-    fs, audio_input = wavfile.read('asdf.wav')
-    # print(fs)
-    # print(audio_input.shape)
-    # plt.plot(audio_input)
-    # plt.show()
-    low_data = butter_bandpass_filter(audio_input, F_0 - BANDWIDTH // 2, F_0 + BANDWIDTH // 2, fs)
-    high_data = butter_bandpass_filter(audio_input, F_1 - BANDWIDTH // 2, F_1 + BANDWIDTH // 2, fs)
+def callback(in_data, frame_count, time_info, status):
+    audio_input = np.frombuffer(in_data, dtype=np.float32)
+    low_data = butter_bandpass_filter(audio_input, F_0 - BANDWIDTH // 2, F_0 + BANDWIDTH // 2, args.samplerate)
+    high_data = butter_bandpass_filter(audio_input, F_1 - BANDWIDTH // 2, F_1 + BANDWIDTH // 2, args.samplerate)
 
     low_data = np.array(list(map(lambda x: x if x > 10000 else 0, low_data)))
     high_data = np.array(list(map(lambda x: x if x > 10000 else 0, high_data)))
@@ -108,12 +106,6 @@ if __name__ == "__main__":
     combined = np.array([low_data, high_data])
     high_or_low = np.apply_along_axis(triple_argmax, 0, combined)
     
-    N=80
-    plt.figure(6)
-    high_or_low = lfilter(np.ones(N) / N, [1], high_or_low)[N:]
-    plt.plot(high_or_low)
-    plt.show()
-
     # Hardcoded cutoff values
     # TODO: figure out programmatic method of determining cutoff values (calibration?)
     LOW_CUTOFF = 0.3
@@ -122,7 +114,6 @@ if __name__ == "__main__":
     NONE_CUTOFF = 0.1
 
     data_diff = []
-    print(data_diff)
     is_symbol = False
     for i in range(5, len(high_or_low)):
         if high_or_low[i] > NONE_CUTOFF and not is_symbol:
@@ -135,12 +126,56 @@ if __name__ == "__main__":
         elif high_or_low[i] <= NONE_CUTOFF:
             is_symbol = False
     
+    # N=80
+    # plt.figure(6)
+    # high_or_low = lfilter(np.ones(N) / N, [1], high_or_low)[N:]
+    # plt.plot(high_or_low)
+    # plt.show()
+    print(high_or_low)
+    
 
     data = []
     for i in range(1, len(data_diff)):
         data.append((data_diff[i] ^ data_diff[i-1]) & 1)
+    callback.q.put(data)
+    return in_data, paContinue
 
-    print(data)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Transmit binary data over sound device.")
+    parser.add_argument("--IP", default="127.0.0.1")
+    parser.add_argument("--Port", default="1234")
+    parser.add_argument("--samplerate", action='store', default=44800, type=int)
+    args = parser.parse_args()
+    pa = PyAudio()
+    q = Queue()
+    callback.q = q
+    stream = pa.open(format=paFloat32, 
+                     channels=1, 
+                     rate=44800,
+                     input=True,
+                     frames_per_buffer=1024,
+                     stream_callback=callback)
+
+
+    # fs, audio_input = wavfile.read('asdf.wav')
+    # print(fs)
+    # print(audio_input.shape)
+    # plt.plot(audio_input)
+    # plt.show()
+    
+    # N=80
+    # plt.figure(6)
+    # high_or_low = lfilter(np.ones(N) / N, [1], high_or_low)[N:]
+    # plt.plot(high_or_low)
+    # plt.show()
+
+    while stream.is_active():
+        data = q.get()
+        print(data)
+
+
+
     
     plt.figure(2)
     plt.clf()

@@ -15,10 +15,14 @@ sym_q = Queue()
 # Messy for back-to-back signals, since the sine wave starts from 0 every time & doesn't reuse past value as start
 def gen_sin(freq, sample_rate, length):
     #thanks stack overflow
-    blank = np.zeros(SOUND_FRAME_SIZE)
-    return np.concatenate([np.sin(
-        2*np.pi*np.arange(SOUND_FRAME_SIZE)*freq/sample_rate
-        ), blank]).astype(np.float32).tobytes()
+    output = np.sin(
+        2*np.pi*np.arange(SOUND_FRAME_SIZE // 10) * freq/sample_rate)
+    # blank = np.zeros(int(SOUND_FRAME_SIZE * 0.9))
+    blank = np.repeat(output[-1], int(SOUND_FRAME_SIZE * 0.9))
+    print(blank.shape)
+    output = np.concatenate([output, blank])
+    print(output.shape)
+    return output.astype(np.float32).tobytes()
 
 def network_producer(fs, symb_q, s):
     
@@ -96,12 +100,13 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description="Transmit binary data over sound device.")
         parser.add_argument("--IP", default="127.0.0.1")
         parser.add_argument("--Port", default="1234")
-        parser.add_argument("--samplerate", action='store', default=44800)
+        parser.add_argument("--samplerate", action='store', default=44800, type=int)
         args = parser.parse_args()
         print(args)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         SOUND_FRAME_SIZE = int(args.samplerate * DUR_SHORT * 10)
+        print(SOUND_FRAME_SIZE)
     
         s.bind((args.IP, int(args.Port)))
 
