@@ -15,7 +15,10 @@ sym_q = Queue()
 # Messy for back-to-back signals, since the sine wave starts from 0 every time & doesn't reuse past value as start
 def gen_sin(freq, sample_rate, length):
     #thanks stack overflow
-    return np.sin(2*np.pi*np.arange(SOUND_FRAME_SIZE)*freq/sample_rate).astype(np.float32).tobytes()
+    blank = np.zeros(SOUND_FRAME_SIZE)
+    return np.concatenate([np.sin(
+        2*np.pi*np.arange(SOUND_FRAME_SIZE)*freq/sample_rate
+        ), blank]).astype(np.float32).tobytes()
 
 def network_producer(fs, symb_q, s):
     
@@ -50,7 +53,8 @@ def network_producer(fs, symb_q, s):
             # map(symb_q.put, list(data_diff))
 
             for x in data_diff:
-                map(symb_q.put, '2'*9)
+                # for i in range(9):
+                #     symb_q.put('2')
                 symb_q.put(x)
 
             # plt.plot(signal)
@@ -82,7 +86,8 @@ def callback(in_data, frame_count, time_info, status):
             return (callback.S_0, paContinue) 
         elif symb == '1':
             return (callback.S_1, paContinue) 
-    return (np.zeros(SOUND_FRAME_SIZE).astype(np.float32).tobytes(), paContinue)
+    return (callback.S_2, paContinue)
+    # return (np.zeros(SOUND_FRAME_SIZE).astype(np.float32).tobytes(), paContinue)
 
 
 # Setup
@@ -96,14 +101,14 @@ if __name__ == "__main__":
         print(args)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        SOUND_FRAME_SIZE = int(args.samplerate * DUR_SHORT)
+        SOUND_FRAME_SIZE = int(args.samplerate * DUR_SHORT * 10)
     
         s.bind((args.IP, int(args.Port)))
 
         callback.q = sym_q
         callback.S_0 = gen_sin(F_0, args.samplerate, DUR_SHORT)
-        callback.S_1 = gen_sin(F_1, args.samplerate, DUR_LONG)
-
+        callback.S_1 = gen_sin(F_1, args.samplerate, DUR_SHORT)
+        callback.S_2 = np.zeros(SOUND_FRAME_SIZE).astype(np.float32).tobytes()
 
         # sym_q.put((0, 0, 1))
         # sym_q.put('2')
